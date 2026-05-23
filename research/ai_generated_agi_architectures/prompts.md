@@ -28,11 +28,11 @@ Provide the response in structured markdown with UML/ASCII diagrams where approp
 
 To ensure optimal performance and exploit specific model capabilities, minor prompt adjustments were made:
 
-1. **Google Gemini 1.5 Pro / 3.5**:
+1. **Google Gemini 1.5 Pro**:
    - *Adjustment:* Added a request to "describe how the architecture leverages extremely large context windows (up to 1M-2M tokens) for direct in-memory reasoning and retrieval, compared to standard RAG patterns."
-2. **DeepSeek V3 / R1**:
+2. **DeepSeek V3**:
    - *Adjustment:* Added a request to "elaborate on reinforcement learning (RL) feedback loops and low-latency Mixture of Experts (MoE) / Multi-head Latent Attention (MLA) runtime alignment optimizations."
 3. **Anthropic Claude 3.5 Sonnet**:
    - *Adjustment:* Emphasized constitutional safety alignment, system-level invariant checkers, and state-machine formal verification.
-4. **Meta Llama 3.1 (70B/405B)**:
+4. **Meta Llama 3.1**:
    - *Adjustment:* Instructed to describe implementation using open-source frameworks like Llama Stack APIs, vLLM, and local inference optimizations.

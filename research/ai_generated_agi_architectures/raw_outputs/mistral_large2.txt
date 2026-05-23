@@ -1,57 +1,116 @@
-# MISTRAL-OS AGI Architecture Proposal (Mistral Large 2)
+# AGI Architecture Proposal - MISTRAL-CORE (Mistral Large 2)
 
-## 1. System Overview
-MISTRAL-OS is a lightweight, European-compliance-first Cognitive OS. It is designed for native function calling, low-overhead orchestration, and GDPR-compliant execution logging.
+**Model**: Mistral Large 2
+**Provider**: Mistral AI
+**Collection Date**: 2026-05-23
+**Context**: European regulatory compliance, native function calling, sandboxed execution
+
+---
+
+## 1. Memory Architecture
+
+### GDPR-Compliant Memory Stack
+
+MISTRAL-CORE incorporates regulatory compliance directly into the memory layers.
 
 ```
        +---------------------------------------------+
-       |             Native FC Interface             |
+       |   In-Memory Session Store                   |
        +---------------------------------------------+
                               |
-                              v
        +---------------------------------------------+
-       |            Modular Reasoner Core            |
+       |   Compliance Gating / PII Masking Proxy     |
        +---------------------------------------------+
-             /                |                \
-            v                 v                 v
-+------------------+ +------------------+ +------------------+
-| pgvector Cache   | | System API Calls | | Compliance Ledger|
-+------------------+ +------------------+ +------------------+
                               |
-                              v
        +---------------------------------------------+
-       |            GDPR Compliance Filter           |
+       |   pgvector DB (Encrypted at Rest)           |
        +---------------------------------------------+
 ```
 
-## 2. Memory Architecture
-* **Semantic Storage:** pgvector index on PostgreSQL.
-* **Audit Memory:** Append-only database logs that track all tool inputs/outputs, structured for easy compliance audits.
+1. **In-Memory Store:**
+   - Tracks active user requests.
+2. **Compliance Gating:**
+   - Filters memory write actions to mask Personal Identifiable Information (PII).
+3. **Encrypted Vector DB:**
+   - pgvector database storing sanitized semantic indexes.
 
-## 3. Reasoning & Planning Loop
-* **Planning Loop:** Structured task execution loops driven by native function calling inputs.
-* **Introspection:** High-level validation models review outputs for clarity and factualness.
+---
+
+## 2. Reasoning & Planning Loop
+
+### Native Function Calling Loops
+
+- Uses native function calling patterns.
+- **System 1:** Emits direct function calls from user inputs.
+- **System 2 (Introspection Model):** Checks execution output consistency. If errors occur, the model reformulates the function parameters.
+
+---
+
+## 3. Learning & Self-Improvement
+
+### Schema Evolution Loops
+
+- The system updates tool definitions based on usage success rates and API cost metrics.
+- Prompts are automatically adjusted to minimize token footprint.
+
+---
 
 ## 4. Tool Use & Action Execution
-* **Function Calls:** Native API JSON structures mapped to python methods.
-* **Sandboxing:** epoll-based micro-sandboxes.
+
+### Epoll-Based Micro-Sandboxes
+
+- **Confinement:**
+  - Tools run inside lightweight epoll-based micro-sandboxes.
+- **Safety Gate:**
+  - Outbound data is routed through a masking proxy to enforce compliance.
+
+---
 
 ## 5. World Model & Representation Layer
-Relational schemas of API models and workspace directories.
+
+### Directory State Database
+
+- MISTRAL-CORE represents the environment state as a set of relational schemas matching directory paths, environment keys, and access rights.
+
+---
 
 ## 6. Safety & Governance Layer
-* **GDPR Compliance:** Automatic PI (Personally Identifiable Information) masking on outbound tool calls.
-* **Role Bounding:** Strict API access scopes.
+
+### Compliance Masking
+
+- A dedicated GDPR validation checker masks PII before payloads leave the local machine.
+- High-level system actions require explicit user verification.
+
+---
 
 ## 7. Evaluation & Benchmark Strategy
-Tracks API request latencies and data protection compliance logs.
+
+### Audit Log Telemetry
+
+- Tracking compliance rates, query latencies, and token cost-performance metrics.
+
+---
 
 ## 8. Persistence & Runtime Architecture
-Rust-based orchestration layer using PostgreSQL as a persistent datastore.
+
+### Rust Runtime with PostgreSQL
+
+- Core orchestrator is built in Rust.
+- Persistent session metadata is stored in an encrypted PostgreSQL instance.
+
+---
 
 ## 9. Multi-Agent & Orchestration Design
-Uses a broker pattern to coordinate lightweight function-calling threads.
 
-## 10. Engineering Feasibility
-* **Bottlenecks:** Latency of compliance checker pipelines.
-* **Insight:** Native function calling cuts planning latency by 25% compared to raw text prompts.
+### Thread-Level Broker Pattern
+
+- Coordination is managed by a lightweight broker thread that spawns worker agents for specialized function calling.
+
+---
+
+## 10. Engineering Feasibility & Originality
+
+### Feasibility and Insights
+
+- **High Feasibility:** Relies on standard relational database schemas and function calling frameworks.
+- **Originality:** The integration of a PII-masking compliance proxy directly into the tool dispatch loop ensures GDPR compliance.

@@ -1,60 +1,118 @@
-# QWEN-OS AGI Architecture Proposal (Alibaba Qwen 2.5)
+# AGI Architecture Proposal - QWEN-OS (Alibaba Qwen 2.5)
 
-## 1. System Overview
-QWEN-OS is a hierarchical multi-agent operating system optimized for complex tool orchestration, code execution, and enterprise database integration.
+**Model**: Qwen 2.5
+**Provider**: Alibaba
+**Collection Date**: 2026-05-23
+**Context**: Database integration, multilingual schemas, DAG tool execution
+
+---
+
+## 1. Memory Architecture
+
+### DB-Structured Concept Ledger
+
+QWEN-OS prioritizes structured database schemas for state tracking.
 
 ```
        +---------------------------------------------+
-       |           Multi-Agent Coordinator           |
+       |   Local KV State Cache                      |
        +---------------------------------------------+
                               |
-                              v
        +---------------------------------------------+
-       |            Dynamic Planner Loop             |
-       |  +---------------------------------------+  |
-       |  |   Recursive Goal Decomposition (RGD)  |  |
-       |  +---------------------------------------+  |
+       |   PostgreSQL Database with pgvector         |
        +---------------------------------------------+
-             /                |                \
-            v                 v                 v
-+------------------+ +------------------+ +------------------+
-|   SQL Database   | | Code Interpreter | | Entity Ontology  |
-+------------------+ +------------------+ +------------------+
-                              |
-                              v
-       +---------------------------------------------+
-       |          Enterprise Guardrail Gate          |
-       +---------------------------------------------+
+            /                                   \
+  +-----------------------+               +-----------------------+
+  |    Factual Ledger     |               |   Episodic Indexes    |
+  +-----------------------+               +-----------------------+
 ```
 
-## 2. Memory Architecture
-* **Factual & Semantic Memory:** Structured Relational DB (PostgreSQL) coupled with a vector plugin (pgvector) to store system settings, facts, and code snippets.
-* **Context Cache:** Dynamic local key-value store for active sessions.
+1. **Session State Cache:**
+   - In-memory key-value store for temporary states.
+2. **Relational Database:**
+   - PostgreSQL with pgvector storing episodic traces and factual ledgers.
+   - Schemas are structured to handle multi-language data.
 
-## 3. Reasoning & Planning Loop
-* **Planning Loop:** Recursive Goal Decomposition (RGD) breaks high-level instructions into executable steps.
-* **Self-Correction:** Code compilation errors are captured and fed back into the prompt loop for iterative debugging.
+---
+
+## 2. Reasoning & Planning Loop
+
+### Recursive Goal Decomposition (RGD)
+
+- High-level instructions are recursively decomposed into a Directed Acyclic Graph (DAG) of subtasks.
+- **System 1:** Parses inputs and generates the initial DAG.
+- **System 2:** Executes DAG nodes. If a node fails, System 2 replans the remaining graph, adjusting node dependencies in real-time.
+
+---
+
+## 3. Learning & Self-Improvement
+
+### Feedback-Driven Prompt Evolution
+
+- Execution failures trigger a prompt refactoring loop.
+- The system reviews the error trace, refines tool description tokens, and registers updated schemas into the tool repository.
+
+---
 
 ## 4. Tool Use & Action Execution
-* **Tool Graph:** Tools are organized in a DAG, allowing the agent to pipe the output of one tool directly as the input of another.
-* **Sandboxing:** Docker containers with resource constraints.
+
+### DAG-Chained Sandboxes
+
+- **Confinement:**
+  - Tools run inside Docker containers.
+- **DAG Execution:**
+  - Tool outputs are piped directly into subsequent tool inputs as declared in the DAG, skipping intermediate LLM steps to decrease latency.
+- **Verification:**
+  - Strict type checking of output variables.
+
+---
 
 ## 5. World Model & Representation Layer
-Factual ontology mapping system objects, database structures, and external API endpoints.
+
+### Factual Ontology Schemas
+
+- Environment state is modeled as a database schema (Ontology). Edges represent foreign key relations and data flows.
+
+---
 
 ## 6. Safety & Governance Layer
-* **Access Control:** Role-Based Access Control (RBAC) governing tool execution permissions.
-* **Output Checking:** Scrutinizes code snippets for malicious calls.
+
+### RBAC Tool Scopes
+
+- Role-Based Access Control (RBAC) restricts tool execution based on user credentials.
+- All code scripts are passed through a static code security scanner before execution.
+
+---
 
 ## 7. Evaluation & Benchmark Strategy
-Measures SQL query execution correctness and tool call completion rates.
+
+### Query Correctness Profiling
+
+- Benchmark suites measure SQL query accuracy, translation correctness across languages, and schema validation failure rates.
+
+---
 
 ## 8. Persistence & Runtime Architecture
-Python-based orchestration loop utilizing FastAPI and PostgreSQL. Threading is managed via celery workers.
+
+### FastAPI + Celery Runtime
+
+- Built on FastAPI with Celery worker execution.
+- Session states are persisted to a PostgreSQL relational database.
+
+---
 
 ## 9. Multi-Agent & Orchestration Design
-Hierarchical coordination using team-based topologies (e.g., Code Developer, Tester, Deployer).
 
-## 10. Engineering Feasibility
-* **Bottlenecks:** Database connection pool limits and Docker orchestration latency.
-* **Insight:** Organizing tools in a DAG reduces agent planning overhead by 30%.
+### Group Role Topologies
+
+- Agents are organized into functional groups (e.g., Developer, Tester, Deployer).
+- A coordinator agent routes tasks through the pipeline.
+
+---
+
+## 10. Engineering Feasibility & Originality
+
+### Feasibility and Insights
+
+- **High Feasibility:** Employs standard relational database schemas and Celery task loops.
+- **Originality:** The DAG-based tool pipeline allows data to flow directly between tools, bypassing the planning model for sequential steps and reducing latency.

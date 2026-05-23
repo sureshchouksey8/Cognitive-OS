@@ -1,70 +1,127 @@
-# HELIOS-OS AGI Architecture Proposal (Google Gemini 1.5 Pro)
+# AGI Architecture Proposal - CHRONOS-OS (Google Gemini 1.5 Pro)
 
-## 1. System Overview
-HELIOS-OS is a Context-Centric Cognitive Architecture designed to exploit extremely long context windows (up to 2 million tokens). Instead of relying heavily on aggressive chunking and database indexing, HELIOS-OS uses in-context retrieval and reasoning, coupled with a hybrid planning loop.
+**Model**: Gemini 1.5 Pro
+**Provider**: Google
+**Collection Date**: 2026-05-23
+**Context**: Large context windows, in-context learning, multimodal reasoning
+
+---
+
+## 1. Memory Architecture
+
+### The Infinite In-Context Buffer
+
+CHRONOS-OS replaces traditional database-centric RAG systems with a massive in-context memory pipeline.
 
 ```
-       +---------------------------------------------+
-       |             Perception Pipeline             |
-       |      (Multimodal Sensory Input Streams)     |
-       +---------------------------------------------+
++-------------------------------------------------------------+
+|        Unified Multi-Modal Context Window (2 Million Tokens)|
+|                                                             |
+|   +-----------------------------------------------------+   |
+|   |  Session History & Full Dialogue Logs                |   |
+|   +-----------------------------------------------------+   |
+|   |  Complete Source Tree & File System Buffers         |   |
+|   +-----------------------------------------------------+   |
+|   |  Episodic Execution Traces & Feedback Loops          |   |
+|   +-----------------------------------------------------+   |
++-------------------------------------------------------------+
                               |
+                     [Context Overflow]
                               v
-       +---------------------------------------------+
-       |      Ultra-Long Context Memory Space        |
-       |  (2M Token Active Context: Logs, DB, Docs)  |
-       +---------------------------------------------+
-                              |
-                              v
-       +---------------------------------------------+
-       |          Search-Guided Planning Core        |
-       |  +---------------------------------------+  |
-       |  |  Monte Carlo Tree Search (MCTS) Loop  |  |
-       |  +---------------------------------------+  |
-       +---------------------------------------------+
-             /                |                \
-            v                 v                 v
-+------------------+ +------------------+ +------------------+
-|  Semantic Cache  | | Dynamic Tool-Map | | Causal Predictor |
-+------------------+ +------------------+ +------------------+
-                              |
-                              v
-       +---------------------------------------------+
-       |          Real-Time Verification Gate        |
-       +---------------------------------------------+
+        +---------------------------------------------+
+        |   Semantic Vector Cache (ChromaDB)          |
+        +---------------------------------------------+
 ```
 
-## 2. Memory Architecture
-* **In-Context Memory Buffer (ICMB):** A massive 2-million token sliding-window context containing the complete execution log, environment parameters, relevant codebase files, and recent system interactions.
-* **Vector Semantic Cache:** ChromaDB containing embeddings of past conversations and code, used as a query-expansion mechanism when context limit is exceeded.
-* **Retrieval-Aware Execution:** The system queries its own long-context memory space using multi-needle-in-a-haystack techniques.
+1. **Active Context Space:**
+   - Up to 2 million tokens of active working memory. The full codebase, command execution history, and API documentation are kept in-context.
+   - Attention mechanisms retrieve relevant details dynamically without explicit indexing pipelines.
 
-## 3. Reasoning & Planning Loop
-Reasoning uses a hybrid of LLM generation and Monte Carlo Tree Search (MCTS). 
-* **Search-Guided Planning:** MCTS is used to simulate future trajectories in the long context buffer.
-* **Tree-of-Thought (ToT):** Parallel reasoning branches are spawned inside the context, and a critic evaluator selects the highest-scoring path.
+2. **Long-Term Backup Store:**
+   - Overflow data is indexed using ChromaDB with a semantic vector cache for cold storage.
+
+---
+
+## 2. Reasoning & Planning Loop
+
+### In-Context Tree Searches
+
+- Planning is conducted directly in the active context window.
+- The system generates multiple reasoning branches inside the context (Tree-of-Thought) and runs Monte Carlo Tree Search (MCTS) simulations directly over these tokens.
+- Self-correction is achieved by appending compiler execution traces to the prompt. The model reads its past errors and immediately updates its active code generation steps.
+
+---
+
+## 3. Learning & Self-Improvement
+
+### Contextual In-Context Learning (ICL)
+
+- Rather than running fine-tuning loops, CHRONOS-OS learns on-the-fly by appending successful execution traces to the system context.
+- The system compiles a portfolio of "success templates" inside the context, adjusting its behavior based on past instructions in the active session.
+
+---
 
 ## 4. Tool Use & Action Execution
-* **Dynamic Mapping:** The model inspects the full tool documentation in-context to formulate API calls.
-* **Sandboxing:** Python interpreter is run in a secure, containerized environment with memory quotas.
-* **Verification:** Execution output is piped directly into the long context, allowing the model to self-correct during the next step.
+
+### In-Context Documentation API Parsing
+
+- **Dynamic Parsing:**
+  - API documentation is loaded directly into the context. The planner reads the documentation and generates tool calls dynamically.
+- **Confinement:**
+  - Tools are executed in ephemeral Docker containers. Output stdout/stderr are immediately appended to the context window for review.
+
+---
 
 ## 5. World Model & Representation Layer
-The world model is represented in-context as a structured document detailing state assumptions, variables, and history. Predictive planning runs in-context simulations.
+
+### Multimodal State Mapping
+
+- The world model is a textual and visual representation maintained in-context.
+- The model evaluates UI snapshots, file structures, and database schemas directly, building a multimodal representation of the system environment.
+
+---
 
 ## 6. Safety & Governance Layer
-* **Context Bounding:** System invariants are kept permanently pinned at the top of the context buffer.
-* **Verification Gate:** Independent safety models evaluate outbound payloads.
+
+### Permanent System Context Pins
+
+- **Context Pinning:**
+  - System safety rules are pinned at the start of the context window, utilizing high-attention weights.
+- **Out-of-Band Verification:**
+  - A secondary, lightweight model reviews outbound payloads to prevent data exfiltration.
+
+---
 
 ## 7. Evaluation & Benchmark Strategy
-Continuous performance metrics are tracked dynamically, measuring in-context recall accuracy and logic coherence.
+
+### Needle Recall Verification
+
+- Regular "needle-in-a-haystack" checks are run within the context to ensure the planner retains recall accuracy across large sequences.
+- Coherence metrics log any performance degradation as the context window approaches its 2M limit.
+
+---
 
 ## 8. Persistence & Runtime Architecture
-State serialization consists of saving the complete context log (token list) to persistent disk files. The system runs on a Python-based asynchronous loop with vLLM serving backend.
+
+### Async Token-State Persistence
+
+- Token state checkpoints are periodically serialized to disk, allowing the runtime to resume execution from a specific token offset.
+- Execution loops run on Python's asyncio framework.
+
+---
 
 ## 9. Multi-Agent & Orchestration Design
-Uses a shared-context whiteboard architecture. All agents read from and write to the same long-context buffer.
 
-## 10. Engineering Feasibility
-* **Bottlenecks:** Long-context processing latency (up to 5 seconds for full 2M token prompts).
-* **Insight:** By keeping all logs and files in-context, retrieval errors (hallucinations) are reduced by 40% compared to typical chunked RAG architectures.
+### Context Whiteboard Topology
+
+- Multiple agents operate within the same context window, sharing a unified "whiteboard."
+- Communication is direct (reading and writing to the shared context space), eliminating message routing latency.
+
+---
+
+## 10. Engineering Feasibility & Originality
+
+### Feasibility and Trade-offs
+
+- **High Feasibility:** Extremely simple codebase as it avoids complex graph or database management.
+- **Originality:** The primary insight is that large-context windows render traditional RAG-based architectures obsolete. By keeping all resources in-context, the agent gains high contextual reasoning consistency.

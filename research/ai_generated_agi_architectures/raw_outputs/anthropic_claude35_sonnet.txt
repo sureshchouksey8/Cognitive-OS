@@ -1,48 +1,43 @@
-# ATHENA-OS AGI Architecture Proposal (Anthropic Claude 3.5 Sonnet)
+# AGI Architecture Proposal - ATHENA-OS (Anthropic Claude 3.5 Sonnet)
 
-## 1. System Overview
-ATHENA-OS is a secure, alignment-first Cognitive Operating System designed for general intelligence orchestration. It utilizes formal verification of state transitions, constitutional safety layers, and a dual-loop reasoning system.
+**Model**: Claude 3.5 Sonnet
+**Provider**: Anthropic
+**Collection Date**: 2026-05-23
+**Context**: Constitutional AI, formal verification, microVM execution, state-machine integrity
+
+---
+
+## 1. Memory Architecture
+
+### The Typed & Immutable Memory Stack
+
+ATHENA-OS structures memory into discrete, immutable blocks with strong type safety.
 
 ```
        +---------------------------------------------+
-       |             User Interaction                |
+       |   Ephemeral Working Memory (EWM) - 128k     |
        +---------------------------------------------+
                               |
-                              v
        +---------------------------------------------+
-       |          Constitutional Input Gate          |
+       |   Episodic Trajectory Memory (ETM) - Graph  |
        +---------------------------------------------+
                               |
-                              v
        +---------------------------------------------+
-       |             Metacognitive Loop              |
-       |  +---------------------------------------+  |
-       |  |  System 2: Formal Policy Checker      |  |
-       |  +---------------------------------------+  |
-       |                      ^                      |
-       |                      v                      |
-       |  +---------------------------------------+  |
-       |  |  System 1: Execution Planner          |  |
-       |  +---------------------------------------+  |
-       +---------------------------------------------+
-             /                |                \
-            v                 v                 v
-+------------------+ +------------------+ +------------------+
-|  Active Context  | |  Action Sandbox  | |   Causal Model   |
-|   (Local Cache)  | |  (Micro-VMs)     | |  (Bayesian Net)  |
-+------------------+ +------------------+ +------------------+
-            \                 |                 /
-             v                v                v
-       +---------------------------------------------+
-       |         Constitutional Output Gate          |
+       |   Consolidated Semantic Memory (CSM)        |
        +---------------------------------------------+
 ```
 
-## 2. Memory Architecture
-ATHENA-OS structures memory into discrete, immutable blocks:
-* **Active Context:** In-memory, sliding-window cache containing the immediate conversational and state variables.
-* **Episodic Store:** Time-ordered ledger of agent transactions. Implements a decaying retrieval curve based on recency, relevance, and frequency.
-* **Semantic Web:** Hierarchical conceptual network representing factual invariants, stored in an embedded vector space (using pgvector).
+1. **Ephemeral Working Memory (EWM):**
+   - Slided-window active context limited to 128k tokens. Holds current execution logs, active file trees, and system state.
+   - Attention snapshots permit quick state recovery without reloading full histories.
+
+2. **Episodic Trajectory Memory (ETM):**
+   - An append-only relational ledger storing execution traces. Causal graphs link observations to decisions and resulting states.
+   - Failed trajectories are preserved as "wisdom nodes" to prevent repeating mistakes.
+
+3. **Consolidated Semantic Memory (CSM):**
+   - Hierarchical conceptual network stored in a PostgreSQL database with the pgvector extension.
+   - Invariant facts are verified before committing to the CSM.
 
 ```python
 from dataclasses import dataclass
@@ -50,7 +45,7 @@ from datetime import datetime
 from typing import Dict, Any
 
 @dataclass(frozen=True)
-def MemoryBlock:
+class MemoryBlock:
     uuid: str
     timestamp: datetime
     content: str
@@ -58,32 +53,129 @@ def MemoryBlock:
     metadata: Dict[str, Any]
 ```
 
-## 3. Reasoning & Planning Loop
-* **System 1 (Action Loop):** Generates draft action plans using high-speed heuristics.
-* **System 2 (Verification Loop):** Formally verifies the draft plans against safety policies, logical correctness, and causal side effects. Uses Tree-of-Thought with backtracking when constraints are violated.
+---
+
+## 2. Reasoning & Planning Loop
+
+### Observe-Hypothesize-Verify Cycle
+
+Reasoning executes inside a formal state-machine logic engine.
+
+```
+[Observation] --> [Constitutional Input Gate]
+                       |
+                       v
+[Hypothesize (System 1 Heuristics)]
+                       |
+                       v
+[Verify (System 2 Formal Policy Checker)] --Fail--> [Backtracking]
+                       |
+                    Pass Gate
+                       |
+                       v
+[Commit (State Transition)] --> [Act]
+```
+
+- **System 1 (Action Loop):**
+  - Emits candidate action plans based on local context heuristics. Fast, non-blocking path.
+  
+- **System 2 (Verification Loop):**
+  - Validates System 1 plans against safety invariants, constitutional rules, and logic requirements.
+  - Uses Tree-of-Thought (ToT) with a depth of 5 and backtracks when a proposed branch violates a safety constraint.
+  - The compiler runs static type checks on plan outputs prior to execution.
+
+---
+
+## 3. Learning & Self-Improvement
+
+### Recursive Self-Modeling & Sleep-Phase Consolidation
+
+- During low-use intervals (sleep phases), ATHENA-OS runs a self-model compiler that evaluates episodic logs.
+- It calculates:
+  $$\Delta W = \eta \cdot \nabla_{W} \mathcal{L}_{safety}$$
+- The system designs test cases to verify if its prompt templates or tool wrappers require update.
+- Important: The core safety invariants are frozen and cannot be updated by the self-model.
+
+---
 
 ## 4. Tool Use & Action Execution
-* **Tool Registry:** Declared tools must implement strict functional typing.
-* **Sandboxing:** Tool execution is confined to ephemeral Firecracker MicroVMs.
-* **Verification:** Output is checked against expected types and side-effects.
+
+### Ephemeral MicroVM Confinement
+
+Every tool execution occurs inside a highly restricted, temporary sandbox.
+
+```
+[Tool Signature Check]
+         |
+         v
+[Firecracker MicroVM Creation]
+         |
+[Isolated Execution (No Network Egress)]
+         |
+[State Transition Audit Logger]
+         |
+[Heuristic Output Sanitizer]
+```
+
+1. **Tool Registry:**
+   - All tools are written in Rust/Python with strict type signatures.
+2. **Confinement:**
+   - Tool execution is isolated within ephemeral Firecracker MicroVMs. Boot time is under 5ms.
+3. **Execution Ledger:**
+   - All system-call metadata is saved directly to a cryptographically signed append-only audit trail.
+
+---
 
 ## 5. World Model & Representation Layer
-ATHENA-OS maintains a Causal Bayesian Network to model the environment's state. It runs simulations of candidate plans to predict outcomes and minimize unexpected consequences.
+
+### Causal Bayesian Belief Networks
+
+- Environment factors are mapped to a Causal Bayesian Network.
+- The system runs Monte Carlo simulations over the network to estimate the likelihood of side effects from tool execution (e.g., disk depletion, network timeouts).
+
+---
 
 ## 6. Safety & Governance Layer
-A dual-loop Constitutional AI model:
-* **Invariants:** Critical system boundaries (e.g., "do not modify host system files") are verified at compile time and runtime.
-* **Auditing:** All actions are written to an append-only cryptographic ledger.
+
+### Constitutional AI Guards
+
+- **Constitutional Vector:**
+  - Incoming and outgoing payloads are evaluated against a constitutional vector representing system safety rules.
+- **Cryptographic Audit Ledger:**
+  - Every action and state transition is cryptographically signed using SHA-256 containing the hash of the preceding record, ensuring the agent cannot self-erase failure logs.
+
+---
 
 ## 7. Evaluation & Benchmark Strategy
-Dynamic, in-context evaluation of agent behaviors using automated safety test suites run periodically in the background.
+
+### Dynamic Behavior Probing
+
+- An isolated evaluator periodically runs safety red-teaming checks in the background.
+- Performance is benchmarked against capability generalization suites, logging any degradation in logical reasoning speed.
+
+---
 
 ## 8. Persistence & Runtime Architecture
-Built in Rust. The state is serialized to JSON/BSON and saved to a persistent PostgreSQL backend. Thread execution utilizes asynchronous tasks managed by the Tokio runtime.
+
+### Rust Tokio Async Runtime
+
+- The system runtime is built in Rust using the Tokio async thread scheduler.
+- State serialization uses BSON for transactional persistence to PostgreSQL.
+
+---
 
 ## 9. Multi-Agent & Orchestration Design
-ATHENA-OS uses a federated delegation model. Agents communicate using typed message-passing channels with strict contracts (similar to Akka actors).
 
-## 10. Engineering Feasibility
-* **Bottlenecks:** MicroVM boot time (approx. 5ms overhead) and cryptographic signing of ledger entries.
-* **Insight:** Formal verification reduces logical errors but increases planning duration by 20%.
+### Federated Actor-Based Messages
+
+- Multi-agent communication is structured as a typed actor model (similar to Akka).
+- Agents exchange messages across authenticated, encrypted channels with strict message schemas.
+
+---
+
+## 10. Engineering Feasibility & Originality
+
+### Feasibility and Insights
+
+- **Medium Feasibility:** Firecracker sandboxing and formal verification introduce a 20% latency overhead, but offer unparalleled security.
+- **Originality:** The core insight is the cryptographically signed ledger. By making audit trails immutable, the agent is incapable of masking failures or editing its history.
