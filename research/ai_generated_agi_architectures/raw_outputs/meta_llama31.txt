@@ -1,0 +1,67 @@
+# LLAMA-OS AGI Architecture Proposal (Meta Llama 3.1)
+
+## 1. System Overview
+LLAMA-OS is an open-source reference cognitive OS built on the Llama Stack. It is designed for local deployment, local fine-tuning loops, and robust safety using Llama Guard models.
+
+```
+       +---------------------------------------------+
+       |              Llama Stack APIs               |
+       +---------------------------------------------+
+                              |
+                              v
+       +---------------------------------------------+
+       |          Llama Guard Safety Filter          |
+       +---------------------------------------------+
+                              |
+                              v
+       +---------------------------------------------+
+       |            Local Planning Engine            |
+       |  +--------------------+   +--------------+  |
+       |  |  vLLM Inference    |   | Fine-tuner   |  |
+       |  +--------------------+   +--------------+  |
+       +---------------------------------------------+
+             /                |                \
+            v                 v                 v
++------------------+ +------------------+ +------------------+
+|   Qdrant DB      | | Local Shell      | | State Graph      |
++------------------+ +------------------+ +------------------+
+                              |
+                              v
+       +---------------------------------------------+
+       |            Llama Guard Output Filter        |
+       +---------------------------------------------+
+```
+
+## 2. Memory Architecture
+* **Semantic Store:** Local Qdrant vector database.
+* **Episodic Store:** File-based JSON logs of conversation history.
+* **In-Context Cache:** vLLM paging system (PageAttention) for fast context retrieval.
+
+## 3. Reasoning & Planning Loop
+* **Planning Loop:** ReAct (Reasoning and Acting) execution chain.
+* **Self-Improvement:** Collects failed runs and uses them to fine-tune local models (using LoRA) overnight.
+
+## 4. Tool Use & Action Execution
+* **Execution:** Direct execution via local shell script wrappers.
+* **Sandboxing:** LXD containers or chroot environments.
+* **Verification:** Heuristic checks of output text.
+
+## 5. World Model & Representation Layer
+Local state graph representing host system status, environment variables, and directories.
+
+## 6. Safety & Governance Layer
+* **Llama Guard:** Dedicated input/output safety classifiers running in parallel.
+* **Borders:** Strict system execution blacklists.
+
+## 7. Evaluation & Benchmark Strategy
+Dynamic regression tests against a local suite of task scenarios.
+
+## 8. Persistence & Runtime Architecture
+Python orchestrator utilizing Docker, vLLM, and SQLite for light-weight state tracking.
+
+## 9. Multi-Agent & Orchestration Design
+Uses a messaging bus (RabbitMQ) to coordinate multiple instances of Llama Stack runtimes.
+
+## 10. Engineering Feasibility
+* **Bottlenecks:** Local GPU VRAM limitations during parallel agent execution.
+* **Insight:** Local fine-tuning using LoRA allows agents to adapt to custom tasks without calling external APIs.

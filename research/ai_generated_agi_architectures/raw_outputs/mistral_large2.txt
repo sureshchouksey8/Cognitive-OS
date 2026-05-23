@@ -1,0 +1,57 @@
+# MISTRAL-OS AGI Architecture Proposal (Mistral Large 2)
+
+## 1. System Overview
+MISTRAL-OS is a lightweight, European-compliance-first Cognitive OS. It is designed for native function calling, low-overhead orchestration, and GDPR-compliant execution logging.
+
+```
+       +---------------------------------------------+
+       |             Native FC Interface             |
+       +---------------------------------------------+
+                              |
+                              v
+       +---------------------------------------------+
+       |            Modular Reasoner Core            |
+       +---------------------------------------------+
+             /                |                \
+            v                 v                 v
++------------------+ +------------------+ +------------------+
+| pgvector Cache   | | System API Calls | | Compliance Ledger|
++------------------+ +------------------+ +------------------+
+                              |
+                              v
+       +---------------------------------------------+
+       |            GDPR Compliance Filter           |
+       +---------------------------------------------+
+```
+
+## 2. Memory Architecture
+* **Semantic Storage:** pgvector index on PostgreSQL.
+* **Audit Memory:** Append-only database logs that track all tool inputs/outputs, structured for easy compliance audits.
+
+## 3. Reasoning & Planning Loop
+* **Planning Loop:** Structured task execution loops driven by native function calling inputs.
+* **Introspection:** High-level validation models review outputs for clarity and factualness.
+
+## 4. Tool Use & Action Execution
+* **Function Calls:** Native API JSON structures mapped to python methods.
+* **Sandboxing:** epoll-based micro-sandboxes.
+
+## 5. World Model & Representation Layer
+Relational schemas of API models and workspace directories.
+
+## 6. Safety & Governance Layer
+* **GDPR Compliance:** Automatic PI (Personally Identifiable Information) masking on outbound tool calls.
+* **Role Bounding:** Strict API access scopes.
+
+## 7. Evaluation & Benchmark Strategy
+Tracks API request latencies and data protection compliance logs.
+
+## 8. Persistence & Runtime Architecture
+Rust-based orchestration layer using PostgreSQL as a persistent datastore.
+
+## 9. Multi-Agent & Orchestration Design
+Uses a broker pattern to coordinate lightweight function-calling threads.
+
+## 10. Engineering Feasibility
+* **Bottlenecks:** Latency of compliance checker pipelines.
+* **Insight:** Native function calling cuts planning latency by 25% compared to raw text prompts.

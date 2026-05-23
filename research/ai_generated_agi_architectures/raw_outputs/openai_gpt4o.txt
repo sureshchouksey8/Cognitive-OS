@@ -1,0 +1,90 @@
+# HERMES-OS AGI Architecture Proposal (OpenAI GPT-4o)
+
+## 1. System Overview
+HERMES-OS is a state-managed, production-grade agent operating system designed for persistent execution, multi-threaded reasoning, and safety-bounded tool interactions. The design prioritizes structured data models, deterministic orchestration, and reliable API integration.
+
+```
+       +---------------------------------------------------+
+       |                 API / UI Layer                    |
+       +---------------------------------------------------+
+                                 |
+                                 v
+       +---------------------------------------------------+
+       |               Reasoning Engine                    |
+       |  +--------------------+   +--------------------+  |
+       |  |  System 1 Router   |   |   System 2 CoT     |  |
+       |  +--------------------+   +--------------------+  |
+       +---------------------------------------------------+
+            |                     |                     |
+            v                     v                     v
++------------------+    +------------------+    +------------------+
+|   Memory Core    |    |  Tool Registry   |    |   World Model    |
+| (Redis + Chroma) |    | (gVisor Sandbox) |    |  (State Graph)   |
++------------------+    +------------------+    +------------------+
+            |                     |                     |
+            +---------------------+---------------------+
+                                 |
+                                 v
+       +---------------------------------------------------+
+       |             Safety & Verification Gate            |
+       +---------------------------------------------------+
+```
+
+## 2. Memory Architecture
+HERMES-OS implements a multi-tier memory system:
+* **Short-Term Memory (STM):** Volatile RAM-based cache utilizing Redis for active execution threads, thread variables, and immediate task history.
+* **Long-Term Episodic Memory:** Vector-based storage (ChromaDB) indexing historical agent actions, outputs, and user feedback with cosine similarity metrics.
+* **Long-Term Semantic Memory:** Structured knowledge graph (Neo4j) mapping entities and relationships derived from tool executions.
+
+```json
+{
+  "memory_node": {
+    "uuid": "45f9e8a2-7b8c-4f9e-bc43-29a39f1c7d88",
+    "timestamp": "2026-05-23T09:40:00Z",
+    "type": "episodic",
+    "embedding_model": "text-embedding-3-small",
+    "metadata": {
+      "task_id": "task_2839",
+      "tool_used": "web_search",
+      "outcome": "success"
+    },
+    "content": "Located AGI architecture requirements and extracted 11 comparison dimensions."
+  }
+}
+```
+
+## 3. Reasoning & Planning Loop
+HERMES-OS separates planning into System 1 (reflexive, low-latency) and System 2 (reflective, search-based).
+* **System 1:** Fast, single-pass LLM invocation for classification and simple schema-based outputs.
+* **System 2:** Monte Carlo Tree Search (MCTS) combined with Tree-of-Thought (ToT) to evaluate alternative action paths. Self-correction is triggered via validation schema failures.
+
+## 4. Tool Use & Action Execution
+All tool invocations are serialized into JSON schemas and executed in a sandboxed environment (using Kubernetes with gVisor).
+* **Validation:** JSON schema check before dispatch.
+* **Execution:** Isolated runtime with strict network egress policies.
+* **Post-check:** LLM-based output sanitization.
+
+## 5. World Model & Representation Layer
+The world model represents the agent's current state and beliefs as a directed acyclic graph (DAG). State changes are predicted using transition models, and actions are simulated inside the DAG before deployment.
+
+## 6. Safety & Governance Layer
+A multi-layered guardrail protocol:
+* **Input Filters:** OpenAI Moderation API for prompt validation.
+* **Execution Gates:** Bounded system capabilities (no root access, read-only file mounts by default).
+* **Output Checker:** Strict heuristic parsing and LLM review of outbound API calls.
+
+## 7. Evaluation & Benchmark Strategy
+Real-time tracking of:
+* Task success rate (completed vs failed workflows)
+* Token consumption efficiency
+* Memory drift (retrieval degradation over time)
+
+## 8. Persistence & Runtime Architecture
+State serialization is done using protocol buffers (Protobuf) serialized to disk. Executions run on a Celery-based worker pool with independent lifecycles.
+
+## 9. Multi-Agent & Orchestration Design
+Uses a manager-worker topology. Communication occurs via a rabbitMQ message broker using structured JSON envelopes. Consensus is achieved via weighted voting.
+
+## 10. Engineering Feasibility
+* **Bottlenecks:** Vector DB retrieval latency under high loads.
+* **Trade-offs:** gVisor sandboxing adds 15ms overhead per tool call.
