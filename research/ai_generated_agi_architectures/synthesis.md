@@ -2,26 +2,40 @@
 
 This document proposes a unified, production-grade software architecture named **CORTEX (Cognitive Operating Runtime and Tool Execution engine)**. CORTEX extracts, refines, and combines the strongest concepts from the 8 surveyed AI system proposals into a concrete, implementation-ready design.
 
-```
-+---------------------------------------------------------------------------------+
-|                                 CORTEX RUNTIME                                  |
-|                                                                                 |
-|   +-------------------+     +-------------------------+     +---------------+   |
-|   |   Input Stream    | --> |  System 1 Parser (vLLM) | --> |   Task Queue  |   |
-|   +-------------------+     +-------------------------+     +---------------+   |
-|                                                                     |           |
-|                                                                     v           |
-|   +-------------------+     +-------------------------+     +---------------+   |
-|   |  Causal Network   | <-- | System 2 Planner (MCTS) | <-- | Plan Executor |   |
-|   |  (World Model)    |     +-------------------------+     +---------------+   |
-|   +-------------------+                                             |           |
-|                                                                     v           |
-|   +-------------------+     +-------------------------+     +---------------+   |
-|   | Cryptographic Log | <-- | Safety Gate (LlamaGuard)| --> | Tool Sandbox  |   |
-|   |  (pg_audit_ledger)|     +-------------------------+     | (MicroVM/LXD) |   |
-|   +-------------------+                                     +---------------+   |
-|                                                                                 |
-+---------------------------------------------------------------------------------+
+```mermaid
+graph TB
+    subgraph User Interaction
+        IS[Input Stream]
+    end
+
+    subgraph Orchestration & Planning (Tokio Runtime)
+        S1[System 1 Parser<br/>vLLM Reflexive Mode]
+        TQ[Task Queue<br/>RabbitMQ Bus]
+        PE[Plan Executor]
+        S2[System 2 Planner<br/>MCTS + ToT Search]
+    end
+
+    subgraph Knowledge & State
+        WM[(Causal State Graph<br/>World Model / filesystem DAG)]
+        DB[(State Database<br/>PostgreSQL / JSONB)]
+    end
+
+    subgraph Security & Execution
+        SG{Safety Gate<br/>Llama Guard}
+        TS[Tool Sandbox<br/>Firecracker / LXD]
+        CL[(Cryptographic Log<br/>system_audit_ledger)]
+    end
+
+    IS --> S1
+    S1 --> TQ
+    TQ --> PE
+    PE --> S2
+    S2 <--> WM
+    PE <--> DB
+    PE --> SG
+    SG -->|Pass| TS
+    SG -->|Fail| CL
+    TS --> CL
 ```
 
 ---
